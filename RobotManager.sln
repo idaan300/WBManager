@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34622.214
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RobotManager", "RobotManager.csproj", "{2577B305-432E-41B9-B97A-C10734B9E544}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2577B305-432E-41B9-B97A-C10734B9E544}.Debug|x64.ActiveCfg = Debug|x64
+		{2577B305-432E-41B9-B97A-C10734B9E544}.Debug|x64.Build.0 = Debug|x64
+		{2577B305-432E-41B9-B97A-C10734B9E544}.Release|x64.ActiveCfg = Release|x64
+		{2577B305-432E-41B9-B97A-C10734B9E544}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0BC5BAD0-4111-4EF6-9A5A-6BBB9531B5B3}
+	EndGlobalSection
+EndGlobal
