@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows.Forms;
@@ -20,23 +21,16 @@ internal static class EntryPoint {
 
     [STAThread]
     private static void Main() {
+        ConsoleEx.Init("RobotManager Debug");
+        Logger.InitLogger(WorkingDir);
+        InitWinformsSettings();
+        Logger.Info("Init");
+        ExceptionEx.Initialize();
 
-        try {
-            ConsoleEx.Init("RobotManager Debug");
-            Logger.InitLogger(WorkingDir);
-            InitWinformsSettings();
-            Logger.Info("Init");
-
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new FormMain());
-        }
-        catch {
-            //TODO Put New Logger Here
-            throw;
-        }
+        Application.EnableVisualStyles();
+        Application.SetCompatibleTextRenderingDefault(false);
+        Application.Run(new FormMain());
     }
-
 
     private static void InitWinformsSettings() {
         SettingsFileName = "Settings.xml";
@@ -57,7 +51,7 @@ internal static class EntryPoint {
             Settings.Default.Save();
         }
         catch {
-            Logger.Critical("Could Not Create Settings File");
+            Logger.Trace("Could Not Create Settings File");
             MessageBox.Show("FATAL: Could Not Create Settings! The Application Will Close.", "Fatal Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
             Application.Exit();
         }

@@ -70,7 +70,7 @@ public static class ConvertEx {
 		    return Temp;
 	    }
 	    catch (Exception Ex) {
-            Logger.Critical($"Parse Exception on struct: {typeof(T)}.\n{Ex.Message}");
+            Logger.Trace($"Parse Exception on struct: {typeof(T)}.\n{Ex.Message}");
 	    }
 	    return new();
     }

@@ -46,7 +46,7 @@ public sealed class PlayfieldOverview : Panel {
         DrawMap_Entities(e.Graphics);
     }
 
-    public void Update() {
+    new public void Update() {
         Invalidate();
         Refresh();
     }

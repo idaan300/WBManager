@@ -3,18 +3,15 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Windows.Forms.VisualStyles;
-using System.Runtime.Serialization.Formatters.Binary;
+
+using Pastel;
 
 using static RobotManager.Utility.RColors;
-using System.Runtime.InteropServices;
-using System.Windows.Forms;
-using Pastel;
-using RobotManager.Forms;
 
 
 namespace RobotManager.Utility.Debug;
@@ -37,9 +34,10 @@ public static class Logger {
     private static readonly string M_Error = "ERR".Pastel(Red);
     private static readonly string M_Verbose = "DBG".Pastel(Color.CadetBlue);
     private static readonly string M_HEX = "HEX".Pastel(Sage);
-    private static readonly Color Col_Object = Color.SlateGray;
+    private static readonly Color Col_File = Color.CornflowerBlue;
+    private static readonly Color Col_Line = Color.DarkCyan;
+    private static readonly Color Col_Method = Color.Khaki;
 
-    private static readonly object WriteLock = new();
     private static readonly object FileLock = new();
 
     //---------------------------
@@ -57,7 +55,7 @@ public static class Logger {
         HexDump = 5,
     };
 
-    public static LogSeverity CurrentSev = LogSeverity.HexDump;
+    private static readonly LogSeverity CurrentSev = LogSeverity.HexDump;
 
     private static readonly Color[] TextColors = [
 	    Color.White,
@@ -78,32 +76,54 @@ public static class Logger {
 
 
 
-    public static void Debug(dynamic DynMesg, [CallerFilePath] string Source = "", [CallerMemberName] string Caller = "", [CallerLineNumber] int Line = 0) => Print(DynMesg, Source, Caller, Line, M_Verbose, "DBG", LogSeverity.Verbose);
-    public static void Hex(byte[] Mesg, [CallerFilePath] string Source = "", [CallerMemberName] string Caller = "", [CallerLineNumber] int Line = 0) => PrintHex(Mesg, 8,  Source, Caller, Line);
-    public static void Hex(char[] Mesg, [CallerFilePath] string Source = "", [CallerMemberName] string Caller = "", [CallerLineNumber] int Line = 0) => PrintHex(Encoding.ASCII.GetBytes(Mesg), 8, Source, Caller, Line);
-    public static void Hex(string Mesg, [CallerFilePath] string Source = "", [CallerMemberName] string Caller = "", [CallerLineNumber] int Line = 0) => PrintHex(Encoding.ASCII.GetBytes(Mesg), 8, Source, Caller, Line);
+    public static void Trace(dynamic DynMesg) {
+        string StackDump = GetStack();
+        (string ConsoleM, string _) = Parse((string)DynMesg.ToString());
 
-    public static void Hex(byte[] Mesg, int PerLine, [CallerFilePath] string Source = "", [CallerMemberName] string Caller = "", [CallerLineNumber] int Line = 0) => PrintHex(Mesg, PerLine, Source, Caller, Line);
-    public static void Hex(char[] Mesg, int PerLine, [CallerFilePath] string Source = "", [CallerMemberName] string Caller = "", [CallerLineNumber] int Line = 0) => PrintHex(Encoding.ASCII.GetBytes(Mesg), PerLine, Source, Caller, Line);
-    public static void Hex(string Mesg, int PerLine, [CallerFilePath] string Source = "", [CallerMemberName] string Caller = "", [CallerLineNumber] int Line = 0) => PrintHex(Encoding.ASCII.GetBytes(Mesg), PerLine, Source, Caller, Line);
+        string OutputC = $"[{GetTime()} {"STK".Pastel(Color.Magenta)}] {ConsoleM}\n{StackDump}";
+        Console.WriteLine(OutputC);
+
+    }
+
+
+    public static void Hex(byte[] Mesg, [CallerFilePath] string Source = "", [CallerMemberName] string Caller = "", [CallerLineNumber] int Line = 0) => PrintHex(Mesg, Source, Caller, Line);
+    public static void Hex(char[] Mesg, [CallerFilePath] string Source = "", [CallerMemberName] string Caller = "", [CallerLineNumber] int Line = 0) => PrintHex(Encoding.ASCII.GetBytes(Mesg), Source, Caller, Line);
+    public static void Hex(string Mesg, [CallerFilePath] string Source = "", [CallerMemberName] string Caller = "", [CallerLineNumber] int Line = 0) => PrintHex(Encoding.ASCII.GetBytes(Mesg), Source, Caller, Line);
 
     public static void Info(dynamic DynMesg, [CallerFilePath] string Source = "", [CallerMemberName] string Caller = "", [CallerLineNumber] int Line = 0) => Print(DynMesg, Source, Caller, Line, M_Info, "INF", LogSeverity.Info);
-	public static void Warn(dynamic DynMesg, [CallerFilePath] string Source = "", [CallerMemberName] string Caller = "", [CallerLineNumber] int Line = 0) => Print(DynMesg, Source, Caller, Line, M_Warn, "WRN", LogSeverity.Warn);
-	public static void Error(dynamic DynMesg, [CallerFilePath] string Source = "", [CallerMemberName] string Caller = "", [CallerLineNumber] int Line = 0) => Print(DynMesg, Source, Caller, Line, M_Error, "ERR", LogSeverity.Error);
+    public static void Warn(dynamic DynMesg, [CallerFilePath] string Source = "", [CallerMemberName] string Caller = "", [CallerLineNumber] int Line = 0) => Print(DynMesg, Source, Caller, Line, M_Warn, "WRN", LogSeverity.Warn);
+    public static void Error(dynamic DynMesg, [CallerFilePath] string Source = "", [CallerMemberName] string Caller = "", [CallerLineNumber] int Line = 0) => Print(DynMesg, Source, Caller, Line, M_Error, "ERR", LogSeverity.Error);
 
-	public static void Critical(dynamic DynMesg, [CallerFilePath] string Source = "",
-		[CallerMemberName] string Caller = "", [CallerLineNumber] int Line = 0) {
-		Print(DynMesg, Source, Caller, Line, M_Critical, "CRT", LogSeverity.None);
-		if(MessageBox.Show($"A critical event occured!\n\n{DynMesg}\n\nAt {Source}->{Caller}:{Line}\n\nPress OK to continue... or cancel to close the application","Critical Error",MessageBoxButtons.OKCancel,MessageBoxIcon.Error) == DialogResult.Cancel) FormMain.Instance.InvokeC(Application.Exit);
-	}
+    public static void InitLogger(string LogFilePath) {
 
-	public static void InitLogger(string LogFilePath) {
-
-		FilePath = LogFilePath;
-		lock (FileLock) {
-			LogStream = InitalizeFileLogger();
+        FilePath = LogFilePath;
+        lock (FileLock) {
+            LogStream = InitalizeFileLogger();
         }
-	}
+    }
+
+    private static string GetStack(int Level = 100) {
+
+        string Out = "";
+        StackFrame[] Stack = new StackTrace().GetFrames();
+
+        if (Stack == null)
+            return "No Stack Available".Pastel(Color.Red);
+        ;
+        int Depth = Math.Min(Stack.Length, Level);
+
+        for (int i = 0; i < Depth; i++) {
+            MethodBase Method = Stack[i].GetMethod();
+            if (Method?.DeclaringType is null) {
+                Out += "\tNo Frame Avaiable\n".Pastel(Color.Red);
+                continue;
+            }
+            Out += $"\t{Method.DeclaringType.FullName.Pastel(Color.DeepPink)}->{Method.Name.Pastel(Color.HotPink) + $"({string.Join<string>(",", Method.GetParameters().Select(X => X.ParameterType.Name))})".Pastel(Color.Aqua)}@{("0x" + Method.MethodHandle.Value.ToString("X")).Pastel(Color.Chartreuse)}\n";
+        }
+
+        return Out.Pastel(Color.White);
+    }
+
 
     //---------------------------
     //      Private
@@ -113,75 +133,80 @@ public static class Logger {
     //Currently each call checks severity. A better method would be to detour the methodcall to a stub depending on severity.
     //Its possible but will take way too much effort.
     private static void Print(dynamic DynMsg, string Src, string Method, int Line, string ConMsg, string FMsg, LogSeverity Sev) {
-	    if (Sev > CurrentSev) return;
+        if (Sev > CurrentSev)
+            return;
 
         (string ConsoleM, string FileM) = Parse((string)(DynMsg.ToString()));
-	    string File = GetFileNameNoExt(Src);
-	    Method = Method.Trim('.');
-	    string OutputC = $"[{GetTime()} {ConMsg}][{$"{File}.cs:{Line}({Method})".Pastel(Col_Object)}] {ConsoleM}";
-	    string OutputF = $"[{GetTime()} {FMsg}[{File}.cs:{Line}({Method})] {FileM}";
-	    
-	    Console.WriteLine(OutputC);
-	    FileLogWrite(OutputF);
-
-    }
-
-    private static void PrintHex(IReadOnlyList<byte> BMsg, int RowLine, string Src, string Method, int Line) {
-	    //if (CurrentSev != LogSeverity.HexDump) return;
-        string Msg = HexDump(BMsg, RowLine);
         string File = GetFileNameNoExt(Src);
-	    Method = Method.Trim('.');
-	    string OutputC = $"[{GetTime()} {M_HEX}][{$"{File}.cs:{Line}({Method})".Pastel(Col_Object)}] {"\n" + Msg}";
-	    string OutputF = $"[{GetTime()} HEX][{File}.cs:{Line}({Method})] {"\n" + Msg}";
-     
-	    Console.WriteLine(OutputC);
-	    FileLogWrite(OutputF);
+        Method = Method.Trim('.');
+        string OutputC = $"[{GetTime()} {ConMsg}][{$"{File}.cs".Pastel(Col_File)}:{Line.ToString().Pastel(Col_Line)}({Method.Pastel(Col_Method)})] {ConsoleM}".Pastel(Color.White);
+        string OutputF = $"[{GetTime()} {FMsg}[{File}.cs:{Line}({Method})] {FileM}";
+
+        Console.WriteLine(OutputC);
+        FileLogWrite(OutputF);
+
     }
 
-	private static StreamWriter InitalizeFileLogger() {
-		string LogFile = $@"{FilePath}\{DefaultFileName}.{Ext}";
+    public static void PrintRaw(dynamic DynMsg) {
+        (string ConsoleM, string FileM) = Parse((string)(DynMsg.ToString()));
+        Console.WriteLine(ConsoleM);
+    }
 
-        if (!Directory.Exists(Path.GetFullPath(Path.GetFullPath(@$"{FilePath}\")))) {
-            Directory.CreateDirectory(Path.GetFullPath(Path.GetFullPath(@$"{FilePath}\")));
+    private static void PrintHex(IReadOnlyList<byte> BMsg, string Src, string Method, int Line) {
+        if (CurrentSev != LogSeverity.HexDump)
+            return;
+        string Msg = HexDump(BMsg);
+        string File = GetFileNameNoExt(Src);
+        Method = Method.Trim('.');
+        string OutputC = $"[{GetTime()} {M_HEX}][{$"{File}.cs".Pastel(Col_File)}:{Line.ToString().Pastel(Col_Line)}({Method.Pastel(Col_Method)})]\n{Msg}".Pastel(Color.White);
+        //string OutputF = $"[{GetTime()} HEX][{File}.cs:{Line}({Method})] {"\n" + Msg}";
+
+        Console.WriteLine(OutputC);
+        // FileLogWrite(OutputF);
+    }
+
+    private static StreamWriter InitalizeFileLogger() {
+        string LogFile = $"{FilePath}/{DefaultFileName}.{Ext}";
+
+        if (!File.Exists(Path.GetFullPath($"{FilePath}/{DefaultFileName}.{Ext}"))) {
+            File.Create($"{FilePath}/{DefaultFileName}.{Ext}").Close();
         }
 
-		if (!File.Exists(Path.GetFullPath(@$"{FilePath}\{DefaultFileName}.{Ext}"))) {
-            
-            File.Create($@"{FilePath}\{DefaultFileName}.{Ext}").Close();
-        }
+        else
+            File.WriteAllText(LogFile, string.Empty);
 
-        else File.WriteAllText(LogFile, string.Empty);
-
-        Stream LogFileStream = File.Open(LogFile,FileMode.Open,FileAccess.Write,FileShare.Read);
+        Stream LogFileStream = File.Open(LogFile, FileMode.Open, FileAccess.Write, FileShare.Read);
         StreamWriter SW = new(LogFileStream);
 
-        if (LogFileStream == Stream.Null) throw new("File Logger Init Error: Stream Was Null");
-        if (SW == StreamWriter.Null) throw new ("File Logger Init Error: StreamWriter Was Null");
-        
+        if (LogFileStream == Stream.Null)
+            throw new("File Logger Init Error: Stream Was Null");
+        if (SW == StreamWriter.Null)
+            throw new("File Logger Init Error: StreamWriter Was Null");
+
         SW.WriteLine("Logging Started");
         SW.Flush();
 
         return SW;
 
-	}
+    }
 
-	private static void FileLogWrite(string Message) {
+    private static void FileLogWrite(string Message) {
 
-		lock(FileLock) {
-			LogStream.WriteLine(Message);
-			LogStream.Flush();
-		}
+        lock (FileLock) {
+            LogStream.WriteLine(Message);
+            LogStream.Flush();
+        }
     }
 
 
 
-	/// <summary>
-	/// Convert A Byte Array To A Formated Hexidecimal Representation
-	/// </summary>
-	/// <param name="Bytes">Byte Array To Convetr</param>
-	/// <param name="Name">Short Description Of Data</param>
-	/// <param name="BytesPerLine">Show X Bytes / Line</param>
-	/// <returns></returns>
+    /// <summary>
+    /// Convert A Byte Array To A Formated Hexidecimal Representation
+    /// </summary>
+    /// <param name="Bytes">Byte Array To Convetr</param>
+    /// <param name="Name">Short Description Of Data</param>
+    /// <param name="BytesPerLine">Show X Bytes / Line</param>
+    /// <returns></returns>
     private static string HexDump(IReadOnlyList<byte> Bytes, int BytesPerLine = 24) {
         if (Bytes == null) return "<null>";
         int ByteLen = Bytes.Count;

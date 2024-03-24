@@ -1,11 +1,14 @@
 ﻿//Native Imports
 
 using System;
+using System.Net;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 //Library Imports
 using BlueMystic;
 using RobotManager.Controls.Custom;
+using RobotManager.Server;
 
 //Local Imports
 using RobotManager.Utility;
@@ -31,7 +34,10 @@ public partial class FormMain : Form {
 
     //Properties
 
+    private Tester y;
+    byte[] Payload = new byte[32];
 
+    private RobotServer a;
     //---------------------
     //     Construtor
     //---------------------
@@ -93,7 +99,7 @@ public partial class FormMain : Form {
         Playfield.TabIndex = 0;
 
         TabManage.Controls.Add(Playfield);
-        Logger.Info("Added WebotsMap");
+        Logger.Info("Added Webots Map");
     }
 
     //-------------------------
@@ -102,6 +108,25 @@ public partial class FormMain : Form {
 
     private void OnLoad(object sender, EventArgs e) {
         PostInit();
+    }
+
+    private void StartInstances_Click(Object sender, EventArgs e) {
+
+       a = new(IPAddress.Loopback, 5999, 32);
+        a.StartListener();
+        Payload.Populate((byte)0x00);
+        //a.StartRead();
+        y = new("127.0.0.1", 5999);
+    }
+
+    private void button2_Click(Object sender, EventArgs e) {
+        y.Send(Payload);
+        Payload[0]++;
+
+    }
+
+    private void button1_Click(Object sender, EventArgs e) {
+
     }
 
     //-------------------------

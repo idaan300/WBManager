@@ -26,6 +26,17 @@ namespace RobotManager.Utility {
         }
 
         /// <summary>
+        /// Set an entire array to the given value;
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="Arr"></param>
+        /// <param name="Value"></param>
+        public static void Set<T>(ref T[] Arr, T Value) {
+            for (int i = 0; i < Arr.Length; i++)
+                Arr[i] = Value;
+        }
+
+        /// <summary>
         /// Compare And Check 2 Byte Arrays.
         /// If Either is null: false
         /// If Lengths differ: false

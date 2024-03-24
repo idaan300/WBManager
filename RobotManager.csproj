@@ -182,10 +182,13 @@
     <Compile Include="Src\Server\DataStructures2.cs" />
     <Compile Include="Src\Server\Server.cs" />
     <Compile Include="Src\Server\TCPServer.cs" />
+    <Compile Include="Src\Server\RobotManager.cs" />
+    <Compile Include="Src\Server\Tester.cs" />
     <Compile Include="Src\Utility\Compare.cs" />
     <Compile Include="Src\Utility\ConvertEx.cs" />
     <Compile Include="Src\Utility\Debug\Assert.cs" />
     <Compile Include="Src\Utility\Debug\ConsoleEx.cs" />
+    <Compile Include="Src\Utility\Debug\ExceptionEx.cs" />
     <Compile Include="Src\Utility\Debug\Logger.cs" />
     <Compile Include="Src\Utility\EnumUtils.cs" />
     <Compile Include="Src\Utility\EventEx.cs" />
